@@ -72,25 +72,48 @@ def drawPhase(current_deck,current_player_hand,current_dealer_hand):
   current_player_hand[newplayercard]=current_deck[newplayercard]
   current_player_hand[newplayercard]=current_deck[newplayercard]
   del current_deck[newplayercard]
-  newdealercard=random.choice(list(current_deck))
-  current_dealer_hand[newdealercard]=current_deck[newdealercard]
-  del current_deck[newdealercard]
+  dealertotal=0
+  for card,value in current_dealer_hand.items():
+    dealertotal+=value
+  if dealertotal<17:
+    newdealercard=random.choice(list(current_deck))
+    current_dealer_hand[newdealercard]=current_deck[newdealercard]
+    del current_deck[newdealercard]
   return current_deck, current_player_hand, current_dealer_hand
   
 # -----------------------------------------------------------------------------------------------------
 
+
 def displayField(current_player_hand, current_dealer_hand):
   clear()
+  playertotal=0
+  for card,value in current_player_hand.items():
+    playertotal+=value
   print("\n\nYour hand is:", end="  ")
   # Convert player hand into a key:value tuples with items() method, create list of items in format card "of value" value ", " for nicer display, unpack that list with * and print the result
-  print(*[card + ' of value ' + str(value) + ", " for card,value in current_player_hand.items()])
-  # Create a dealer hand with the most recently drawn card hidden
-  hidden_dealer_hand=list(current_dealer_hand.items())
-  # hidden_dealer_hand[len(hidden_dealer_hand)-1]=["", ""]
-  del hidden_dealer_hand[len(hidden_dealer_hand)-1]
-  # Print the dealer hand with the most recently drawn card hidden
-  print("\nThe dealer hand is:", end=" ")
-  print(*[card + " of value " + str(value) + ", " for card,value in hidden_dealer_hand ])
+  print(*[card + ', value ' + str(value) + ", " for card,value in current_player_hand.items()])
+  print(f"\nYour current score is: {playertotal}")
+  dealertotal=0
+  for card,value in current_dealer_hand.items():
+    dealertotal+=value
+  if dealertotal<17:
+    # Create a dealer hand with the most recently drawn card hidden
+    hidden_dealer_hand=list(current_dealer_hand.items())
+    # hidden_dealer_hand[len(hidden_dealer_hand)-1]=["", ""]
+    del hidden_dealer_hand[len(hidden_dealer_hand)-1]
+    hidden_dealer_hand.append(("Facedown Card", "Hidden"))
+    # Print the dealer hand with the most recently drawn card hidden
+    print("\nThe dealer hand is:", end=" ")
+    print(*[card + ", value " + str(value) + ", " for card,value in hidden_dealer_hand ])
+    hiddendealertotal=0
+    for card,value in hidden_dealer_hand:
+      if str(value).isdigit():
+        hiddendealertotal+=value
+    print(f"The dealer's current score is: {hiddendealertotal}")
+  elif dealertotal>=17:
+    print("\nThe dealer's final hand is:", end=" ")
+    print(*[card + ", value " + str(value) + ", " for card,value in current_dealer_hand.items() ])
+    print(f"The dealer's final score is: {dealertotal}")
   return
 
 # -----------------------------------------------------------------------------------------------------
@@ -122,13 +145,21 @@ def bustCheck(current_player_hand):
 
 def endGameScreen(playerBust,current_player_hand,current_dealer_hand):
   clear()
+  playertotal=0
+  for card,value in current_player_hand.items():
+    playertotal+=value
+  dealertotal=0
+  for card,value in current_dealer_hand.items():
+    dealertotal+=value
   # Print final hands
   print("\n\nYour final hand is:", end="  ")
-  print(*[card + ' of value ' + str(value) + ", " for card,value in current_player_hand.items()])
+  print(*[card + ', value ' + str(value) + ", " for card,value in current_player_hand.items()])
+  print(f"\nYour final score is: {playertotal}")
   print("\n\nThe dealer's final hand is:", end="  ")
-  print(*[card + ' of value ' + str(value) + ", " for card,value in current_dealer_hand.items()])
+  print(*[card + ', value ' + str(value) + ", " for card,value in current_dealer_hand.items()])
+  print(f"The dealer's final score is: {dealertotal}")
   if playerBust==True:
-    print("\nYou lose. \nYa Loser")
+    print("\nYou lose!")
   else:
     playertotal=0
     for card,value in current_player_hand.items():
@@ -137,7 +168,7 @@ def endGameScreen(playerBust,current_player_hand,current_dealer_hand):
     for card,value in current_dealer_hand.items():
       dealertotal+=value
     if (playertotal>dealertotal and dealertotal<21) or (dealertotal>21):
-      print("You win I guess")
+      print("You win!")
     elif playertotal==dealertotal:
       print("It's a draw!")
 
@@ -157,18 +188,23 @@ def gameLoop():
       newRound=False
       endGameScreen(playerBust,current_player_hand,current_dealer_hand)
     else:
-      errorCheck=True
-      while errorCheck==True:
-        hitMe=input("\nWould you like to draw another card or stay ?\nEnter draw or stay: ").lower()
-        if hitMe=="draw":
-          current_deck, current_player_hand, current_dealer_hand=drawPhase(current_deck, current_player_hand, current_dealer_hand)
-          errorCheck=False
-        elif hitMe=="stay":
-          errorCheck=False
-          newRound=False
-          endGameScreen(playerBust, current_player_hand, current_dealer_hand)
-        else:
-          print("Invalid input")
+      dealerBust=bustCheck(current_dealer_hand)
+      if dealerBust:
+        newRound=False
+        endGameScreen(playerBust,current_player_hand,current_dealer_hand)
+      else:
+        errorCheck=True
+        while errorCheck==True:
+          hitMe=input("\nWould you like to draw another card or stay ?\nEnter draw or stay: ").lower()
+          if hitMe=="draw":
+            current_deck, current_player_hand, current_dealer_hand=drawPhase(current_deck, current_player_hand, current_dealer_hand)
+            errorCheck=False
+          elif hitMe=="stay":
+            errorCheck=False
+            newRound=False
+            endGameScreen(playerBust, current_player_hand, current_dealer_hand)
+          else:
+            print("Invalid input")
       
 # -----------------------------------------------------------------------------------------------------
 
