@@ -65,6 +65,14 @@ def initialSetup():
   return STARTING_DECK, EMPTY_PLAYER_HAND, EMPTY_DEALER_HAND
 
 # -----------------------------------------------------------------------------------------------------
+# Calculate a player's current score
+def getScore(hand):
+  score=0
+  for card,value in hand.items():
+    score+=value
+  return score
+
+# ----------------------------------------------------------------------------------------------------
 
 def drawPhase(current_deck,current_player_hand,current_dealer_hand):
   # Draw a new card for the player and delete that card from the deck. Then do the same for the dealer
@@ -72,9 +80,8 @@ def drawPhase(current_deck,current_player_hand,current_dealer_hand):
   current_player_hand[newplayercard]=current_deck[newplayercard]
   current_player_hand[newplayercard]=current_deck[newplayercard]
   del current_deck[newplayercard]
-  dealertotal=0
-  for card,value in current_dealer_hand.items():
-    dealertotal+=value
+  dealertotal=getScore(current_dealer_hand)
+  # As a rule, the dealer does not draw any new cards if they have a score greater than 17
   if dealertotal<17:
     newdealercard=random.choice(list(current_deck))
     current_dealer_hand[newdealercard]=current_deck[newdealercard]
@@ -86,25 +93,21 @@ def drawPhase(current_deck,current_player_hand,current_dealer_hand):
 
 def displayField(current_player_hand, current_dealer_hand):
   clear()
-  playertotal=0
-  for card,value in current_player_hand.items():
-    playertotal+=value
+  playertotal=getScore(current_player_hand)
   print("\n\nYour hand is:", end="  ")
   # Convert player hand into a key:value tuples with items() method, create list of items in format card "of value" value ", " for nicer display, unpack that list with * and print the result
   print(*[card + ', value ' + str(value) + ", " for card,value in current_player_hand.items()])
   print(f"\nYour current score is: {playertotal}")
-  dealertotal=0
-  for card,value in current_dealer_hand.items():
-    dealertotal+=value
+  dealertotal=getScore(current_dealer_hand)
   if dealertotal<17:
-    # Create a dealer hand with the most recently drawn card hidden
+    # Create a dealer hand with the most recently drawn card facedown
     hidden_dealer_hand=list(current_dealer_hand.items())
-    # hidden_dealer_hand[len(hidden_dealer_hand)-1]=["", ""]
     del hidden_dealer_hand[len(hidden_dealer_hand)-1]
     hidden_dealer_hand.append(("Facedown Card", "Hidden"))
-    # Print the dealer hand with the most recently drawn card hidden
+    # Print the dealer hand with the most recently drawn card facedown
     print("\nThe dealer hand is:", end=" ")
     print(*[card + ", value " + str(value) + ", " for card,value in hidden_dealer_hand ])
+    # Calculate a score, accounting for the fact that one card is face down
     hiddendealertotal=0
     for card,value in hidden_dealer_hand:
       if str(value).isdigit():
@@ -120,10 +123,8 @@ def displayField(current_player_hand, current_dealer_hand):
 
 def bustCheck(current_player_hand):
   # Add up all the cards in the player's hand
-  total=0
-  for card,value in current_player_hand.items():
-    total+=value
-  # If player busted, check for Aces valued at 11 in their hand, and if any are found change the value to 11
+  total=getScore(current_player_hand)
+  # If the player's score is greater than 21, check for Aces valued at 11 in their hand, and if any are found change the value of the first one encountered to 1
   if total>21:
     aceExisted=False
     for card,value in current_player_hand.items():
@@ -131,6 +132,7 @@ def bustCheck(current_player_hand):
         current_player_hand[card]=1
         aceExisted=True
         break
+    # If there are no aces to change value on and their score is still above 21, the player has busted
     if not aceExisted and total>21:
       return True
     # Check again if player busted after changing out first Ace
@@ -138,6 +140,7 @@ def bustCheck(current_player_hand):
       return True
     else:
       return False
+  # If the player's score is less than 21, they have not busted
   elif total<21:
     return False
 
@@ -145,12 +148,8 @@ def bustCheck(current_player_hand):
 
 def endGameScreen(playerBust,current_player_hand,current_dealer_hand):
   clear()
-  playertotal=0
-  for card,value in current_player_hand.items():
-    playertotal+=value
-  dealertotal=0
-  for card,value in current_dealer_hand.items():
-    dealertotal+=value
+  playertotal=getScore(current_player_hand)
+  dealertotal=getScore(current_dealer_hand)
   # Print final hands
   print("\n\nYour final hand is:", end="  ")
   print(*[card + ', value ' + str(value) + ", " for card,value in current_player_hand.items()])
@@ -158,15 +157,13 @@ def endGameScreen(playerBust,current_player_hand,current_dealer_hand):
   print("\n\nThe dealer's final hand is:", end="  ")
   print(*[card + ', value ' + str(value) + ", " for card,value in current_dealer_hand.items()])
   print(f"The dealer's final score is: {dealertotal}")
+  # If the player score is greater than 21, the player has busted and a game loss screen is printed. 
   if playerBust==True:
     print("\nYou lose!")
+  # If neither the dealer nor the player has busted, check whether the player has won or drawn and print the appropriate screen.
   else:
-    playertotal=0
-    for card,value in current_player_hand.items():
-      playertotal+=value
-    dealertotal=0
-    for card,value in current_dealer_hand.items():
-      dealertotal+=value
+    playertotal=getScore(current_player_hand)
+    dealertotal=getScore(current_dealer_hand)
     if (playertotal>dealertotal and dealertotal<21) or (dealertotal>21):
       print("You win!")
     elif playertotal==dealertotal:
@@ -177,34 +174,49 @@ def endGameScreen(playerBust,current_player_hand,current_dealer_hand):
 def gameLoop():
   # Set up decks and hands to start game
   current_deck,current_player_hand,current_dealer_hand=initialSetup()
-  # Draw two cards for player and for dealer
+  # Draw two cards for player and for dealer to start the match.
   for carddraw in range(2):
     current_deck, current_player_hand, current_dealer_hand=drawPhase(current_deck, current_player_hand, current_dealer_hand)
   newRound=True
+  # This loop allows the player to draw until they lose, the dealer loses or they choose to stay.
   while newRound:
+    # Check if the player has busted
     playerBust=bustCheck(current_player_hand)
     displayField(current_player_hand, current_dealer_hand)
+    # If the player has busted, end the game here.
     if playerBust:
       newRound=False
       endGameScreen(playerBust,current_player_hand,current_dealer_hand)
+    # If the player has not busted, check if the dealer has busted instead.
     else:
       dealerBust=bustCheck(current_dealer_hand)
+      # if the dealer has busted, end the game here.
       if dealerBust:
         newRound=False
         endGameScreen(playerBust,current_player_hand,current_dealer_hand)
       else:
-        errorCheck=True
-        while errorCheck==True:
-          hitMe=input("\nWould you like to draw another card or stay ?\nEnter draw or stay: ").lower()
-          if hitMe=="draw":
-            current_deck, current_player_hand, current_dealer_hand=drawPhase(current_deck, current_player_hand, current_dealer_hand)
-            errorCheck=False
-          elif hitMe=="stay":
-            errorCheck=False
-            newRound=False
-            endGameScreen(playerBust, current_player_hand, current_dealer_hand)
-          else:
-            print("Invalid input")
+        dealertotal=getScore(current_dealer_hand)
+        playertotal=getScore(current_player_hand)
+        # The dealer, as a rule, stops drawing cards if their total is between 17 and 21. Therefore, the player can win by default if the dealer's score is between 17 and 21 and the player has a greater score. This conditional automatically stops the game for the player in this situation. Similarly, if the player has exactly 21 the game is stopped regardless of what the dealer's score is.
+        if (dealertotal>=17 and playertotal>dealertotal) or playertotal==21:
+          newRound=False
+          endGameScreen(playerBust, current_player_hand, current_dealer_hand)
+        else:
+          errorCheck=True
+          # This loop validates player input.
+          while errorCheck==True:
+            hitMe=input("\nWould you like to draw another card or stay ?\nEnter draw or stay: ").lower()
+            # When the player chooses to draw, a card is transferred from the deck to their hand. Unless the dealer's score is between 17 and 21, a card is also transferred from the deck to the dealer's hand.
+            if hitMe=="draw":
+              current_deck, current_player_hand, current_dealer_hand=drawPhase(current_deck, current_player_hand, current_dealer_hand)
+              errorCheck=False
+            # When the player chooses to stay, the game is ended and the dealer's facedown card is revealed.
+            elif hitMe=="stay":
+              errorCheck=False
+              newRound=False
+              endGameScreen(playerBust, current_player_hand, current_dealer_hand)
+            else:
+              print("Invalid input")
       
 # -----------------------------------------------------------------------------------------------------
 
